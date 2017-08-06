@@ -3,11 +3,22 @@ const Path = require('path');
 const EOL = require('os').EOL;
 const crypto = require('crypto');
 const inquirer = require('inquirer');
+const program = require('commander');
 
 const ALGO = 'sha256';
 
+var cwd = undefined;
+program.version('1.0.1')
+   .usage('[options] <directory>')
+  .option('-r, --review <n>', 'How many collisions to review [all]', parseInt, 0)
+  .action(function (dir) { cwd = dir; })
+  .parse(process.argv);
+
+if ( !cwd || Number.isNaN(program.review)) {
+  program.help();
+}
+
 var hashMap = new Map();
-var cwd = ".";
 function readDir(cwd, hashMap) {
   return fs.readdir(cwd).then((files) => {
     let pAll = [ ];
@@ -49,7 +60,7 @@ function readDir(cwd, hashMap) {
 }
 
 var toDelete = [];
-readDir('.', hashMap).then((howmany) => {
+readDir(cwd, hashMap).then((howmany) => {
   console.log("OK. Checked", howmany, "items");
   let entries = Array.from(hashMap.entries()).map((obj) => obj[1]), // convert Iterator to Array
       itor = 0;
@@ -57,6 +68,11 @@ readDir('.', hashMap).then((howmany) => {
   // only look at dups
   entries = entries.filter((x) => x.length > 1);
   console.log("", entries.length, "collisions detected");
+
+  if (program.review && entries.length > program.review) {
+    entries.length = program.review;
+    console.log("Limiting to", entries.length, "collisions");
+  }
 
   let questions = entries.map((list) => {
     list.sort();
